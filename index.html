@@ -3,73 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Defender: High Stakes</title>
+    <title>Defender: Pro Edition</title>
     <style>
-        :root { --green: #1b5e20; --gold: #fbc02d; --red: #b71c1c; --blue: #0d47a1; }
-        body { font-family: system-ui, sans-serif; background: #cfd8dc; margin: 0; padding: 10px; }
-        .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 450px; margin: auto; }
-        h2 { text-align: center; color: var(--green); margin: 0 0 10px 0; }
-        .setup-input { width: 100%; padding: 12px; margin: 5px 0 10px 0; border: 1px solid #bbb; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .btn-main { background: var(--green); color: white; margin-top: 10px; }
-        .btn-bump { background: var(--red); color: white; margin: 10px 0; }
-        .unit-display { background: #fff9c4; padding: 8px; text-align: center; font-weight: bold; border-radius: 4px; margin-bottom: 10px; border: 1px solid #fbc02d; }
-        .point-toggle { display: flex; gap: 6px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
-        .chip { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; cursor: pointer; background: #f5f5f5; flex: 1; text-align: center; font-weight: bold; }
-        .chip.active { background: var(--green); color: white; border-color: var(--green); }
-        .chip.ranch-chip.active { background: var(--gold); color: black; }
-        .last-place-msg { font-size: 0.85em; color: var(--red); text-align: center; font-style: italic; margin-bottom: 5px; }
+        :root { --green: #1b5e20; --gold: #fbc02d; --red: #b71c1c; --blue: #0d47a1; --light: #f1f8e9; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #cfd8dc; margin: 0; padding: 10px; touch-action: manipulation; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-width: 480px; margin: auto; }
+        h2 { text-align: center; color: var(--green); margin: 0 0 15px 0; }
+        
+        .setup-input { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
+        .btn-main { background: var(--green); color: white; }
+        .btn-bump { background: var(--red); color: white; border: 3px solid #ffcdd2; }
+        .btn-summary { background: var(--blue); color: white; margin-top: 15px; }
+        .btn-outline { background: transparent; border: 2px solid #999; color: #666; padding: 10px; font-size: 14px; }
+        
+        .unit-display { background: #fff9c4; padding: 12px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; border: 2px dashed var(--gold); }
+        
+        .point-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .chip { padding: 15px 5px; border: 2px solid #ddd; border-radius: 10px; font-size: 14px; cursor: pointer; background: #fff; text-align: center; font-weight: 800; color: #666; }
+        .chip.active { background: var(--green); color: white; border-color: #0e3d14; }
+        .chip.ranch-chip.active { background: var(--gold); color: #333; border-color: #f9a825; }
+        
+        .defender-box { background: var(--light); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--green); }
+        .last-place-msg { font-size: 0.9em; color: var(--red); text-align: center; font-weight: 600; margin-bottom: 10px; }
+        
+        .summary-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); color: white; z-index: 100; display: none; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .payout-line { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; margin-bottom: 8px; font-family: monospace; border-left: 4px solid var(--gold); }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div id="setup-screen">
-        <h2>Defender Setup</h2>
-        <label>Starting Stake ($ per point):</label>
-        <input type="number" id="baseUnit" value="0.25" step="0.01" class="setup-input">
+        <h2>🛡️ Defender Setup</h2>
+        <label>Stake ($ per point):</label>
+        <input type="number" id="baseUnit" value="0.25" step="0.01" inputmode="decimal" class="setup-input">
         <input type="text" id="p1" placeholder="Player 1" class="setup-input">
         <input type="text" id="p2" placeholder="Player 2" class="setup-input">
         <input type="text" id="p3" placeholder="Player 3" class="setup-input">
         <input type="text" id="p4" placeholder="Player 4" class="setup-input">
         <input type="text" id="p5" placeholder="Player 5" class="setup-input">
-        <button class="btn btn-main" onclick="initGame()">Start Round</button>
+        <button class="btn btn-main" onclick="initGame()">START ROUND</button>
     </div>
 
     <div id="game-screen" style="display:none;">
         <h2 id="hole-header">Hole 1</h2>
-        <div class="unit-display" id="current-unit-box">Current Stake: $0.25 / point</div>
+        <div class="unit-display" id="current-unit-box">Stake: $0.25 / pt</div>
         
         <div id="last-place-area" class="last-place-msg"></div>
-        <button class="btn btn-bump" onclick="applyBump()">BUMP (Double Stakes)</button>
+        <button class="btn btn-bump" onclick="applyBump()">BUMP (2x Stakes)</button>
 
-        <div style="background: #f1f8e9; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-            <div id="defender-name" style="text-align:center; font-weight:bold;"></div>
-            <select id="partner-pick" class="setup-input" style="margin-top:5px;"></select>
+        <div class="defender-box">
+            <div id="defender-name" style="font-size: 1.2rem; font-weight: 900; margin-bottom: 10px;"></div>
+            <select id="partner-pick" class="setup-input" style="margin:0; background:white;"></select>
         </div>
 
         <div class="point-toggle">
-            <div class="chip" id="chip-lb" onclick="togglePoint('lb')">LB (2)</div>
-            <div class="chip" id="chip-lt" onclick="togglePoint('lt')">LT (2)</div>
-            <div class="chip" id="chip-px" onclick="togglePoint('px')">PX (1)</div>
-            <div class="chip ranch-chip" id="chip-br" onclick="toggleRanch()">RANCH (12)</div>
+            <div class="chip" id="chip-lb" onclick="togglePoint('lb')">LOW BALL (2)</div>
+            <div class="chip" id="chip-lt" onclick="togglePoint('lt')">LOW TOTAL (2)</div>
+            <div class="chip" id="chip-px" onclick="togglePoint('px')">PAR/BIRDIE (1)</div>
+            <div class="chip ranch-chip" id="chip-br" onclick="toggleRanch()">THE RANCH (12)</div>
         </div>
 
-        <select id="winner-pick" class="setup-input">
-            <option value="team2">2-Man Team (Def + Partner) Wins</option>
-            <option value="team3">3-Man Team (The Field) Wins</option>
+        <select id="winner-pick" class="setup-input" style="background: #e3f2fd; font-weight: bold;">
+            <option value="team2">Defender + Partner Wins</option>
+            <option value="team3">The Field Wins</option>
         </select>
 
-        <button class="btn btn-main" onclick="processHole()">Post Score</button>
+        <button class="btn btn-main" onclick="processHole()">POST SCORE</button>
+        <button class="btn btn-outline" id="undo-btn" onclick="undoLastHole()" style="display:none;">↺ Undo Last Hole</button>
 
-        <hr style="margin:20px 0;">
-        <div id="leaderboard"></div>
+        <div id="leaderboard" style="margin-top:20px;"></div>
+        
+        <button class="btn btn-summary" onclick="showSummary()">💰 VIEW PAYOUTS / END GAME</button>
     </div>
+</div>
+
+<div id="summary-screen" class="summary-overlay">
+    <h1 style="color: var(--gold); text-align: center;">Round Summary</h1>
+    <div id="final-stats"></div>
+    <hr style="opacity:0.3; margin: 20px 0;">
+    <h3>Settlements (Who pays who):</h3>
+    <div id="payout-logic"></div>
+    
+    <button class="btn btn-main" style="margin-top:30px;" onclick="closeSummary()">Return to Scorecard</button>
+    <button class="btn btn-bump" onclick="resetGame()">Clear Data & Start New Match</button>
 </div>
 
 <script>
     let players = [];
+    let history = []; 
     let hole = 1;
     let defIdx = 0;
     let baseUnit = 0.25;
@@ -77,20 +102,16 @@
     let activePoints = { lb: false, lt: false, px: false, br: false };
 
     function initGame() {
-        baseUnit = parseFloat(document.getElementById('baseUnit').value);
+        baseUnit = parseFloat(document.getElementById('baseUnit').value) || 0.25;
         currentUnit = baseUnit;
+        players = [];
         for(let i=1; i<=5; i++) {
-            players.push({ name: document.getElementById('p'+i).value || "P"+i, points: 0 });
+            let val = document.getElementById('p'+i).value.trim();
+            players.push({ name: val || "Player "+i, points: 0 });
         }
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
         updateUI();
-    }
-
-    function applyBump() {
-        currentUnit *= 2;
-        updateUI();
-        alert("BUMPED! Stakes are now $" + currentUnit.toFixed(2));
     }
 
     function togglePoint(type) {
@@ -106,55 +127,29 @@
         if (activePoints.lb && activePoints.lt && activePoints.px) {
             activePoints.br = !activePoints.br;
             document.getElementById('chip-br').classList.toggle('active');
-        } else {
-            alert("Sweep LB, LT, and PX first!");
-        }
+        } else { alert("Must sweep Ball, Total, and Par/Birdie for a Ranch!"); }
     }
 
-    function updateUI() {
-        document.getElementById('hole-header').innerText = `Hole ${hole}`;
-        document.getElementById('current-unit-box').innerText = `Current Stake: $${currentUnit.toFixed(2)} / point`;
-        document.getElementById('defender-name').innerText = `Defender: ${players[defIdx].name}`;
-        
-        // Update Partner list
-        const pSelect = document.getElementById('partner-pick');
-        pSelect.innerHTML = "<option disabled selected>Pick Partner...</option>";
-        players.forEach((p, i) => { if(i !== defIdx) { 
-            let opt = document.createElement('option'); opt.value = i; opt.text = p.name; pSelect.add(opt); 
-        }});
-
-        // Find Last Place
-        let sorted = [...players].sort((a,b) => a.points - b.points);
-        document.getElementById('last-place-area').innerText = `${sorted[0].name} is in last (Controls Bump)`;
-
-        // Leaderboard
-        const lb = document.getElementById('leaderboard');
-        lb.innerHTML = "<h3>Standings</h3>";
-        players.forEach(p => {
-            lb.innerHTML += `
-                <div class="player-row">
-                    <span>${p.name}</span>
-                    <span style="text-align:right">
-                        <b>${p.points} pts</b><br>
-                        <small>$${(p.points * baseUnit).toFixed(2)}</small>
-                    </span>
-                </div>`;
-        });
+    function applyBump() {
+        currentUnit *= 2;
+        updateUI();
     }
 
     function processHole() {
         let partnerIdx = parseInt(document.getElementById('partner-pick').value);
-        if (isNaN(partnerIdx)) return alert("Pick a partner!");
+        if (isNaN(partnerIdx)) return alert("Select a partner!");
 
-        // Calculation: Points * (CurrentUnit / BaseUnit) to keep point history accurate relative to money
+        history.push(JSON.parse(JSON.stringify({ players, hole, defIdx, currentUnit })));
+        document.getElementById('undo-btn').style.display = 'block';
+
         let multiplier = currentUnit / baseUnit;
-        let hPts = activePoints.br ? 12 : (activePoints.lb?2:0) + (activePoints.lt?2:0) + (activePoints.px?1:0);
-        let effectivePts = hPts * multiplier;
+        let rawPts = activePoints.br ? 12 : (activePoints.lb?2:0) + (activePoints.lt?2:0) + (activePoints.px?1:0);
+        if (rawPts === 0) return alert("No points selected!");
 
+        let effectivePts = rawPts * multiplier;
         let totalPot = effectivePts * 3;
         let pShare = Math.floor(totalPot / 2);
         let dShare = totalPot - pShare;
-
         let winner = document.getElementById('winner-pick').value;
 
         players.forEach((p, i) => {
@@ -172,9 +167,9 @@
         hole++;
         defIdx = (defIdx + 1) % 5;
         
-        // Reset Stakes at the turn
-        if (hole === 10) {
-            currentUnit = baseUnit;
+        // At the turn, just alert and reset unit. Don't force a screen change.
+        if (hole === 10) { 
+            currentUnit = baseUnit; 
             alert("The Turn! Stakes reset to $" + baseUnit.toFixed(2));
         }
 
@@ -183,6 +178,83 @@
         updateUI();
         window.scrollTo(0,0);
     }
+
+    function undoLastHole() {
+        if (history.length === 0) return;
+        let lastState = history.pop();
+        players = lastState.players;
+        hole = lastState.hole;
+        defIdx = lastState.defIdx;
+        currentUnit = lastState.currentUnit;
+        if (history.length === 0) document.getElementById('undo-btn').style.display = 'none';
+        updateUI();
+    }
+
+    function showSummary() {
+        document.getElementById('summary-screen').style.display = 'block';
+        let statsHtml = `<h2>Score Summary</h2>`;
+        players.forEach(p => {
+            let cash = (p.points * baseUnit).toFixed(2);
+            let color = p.points >= 0 ? '#81c784' : '#e57373';
+            statsHtml += `<div class="player-row" style="color:white; border-bottom:1px solid #444;">
+                            <span>${p.name}</span>
+                            <b style="color:${color}">$${cash} (${p.points} pts)</b>
+                          </div>`;
+        });
+        document.getElementById('final-stats').innerHTML = statsHtml;
+        calculatePayouts();
+    }
+
+    function calculatePayouts() {
+        let balances = players.map(p => ({ name: p.name, amt: p.points * baseUnit }));
+        let winners = balances.filter(b => b.amt > 0).sort((a,b) => b.amt - a.amt);
+        let losers = balances.filter(b => b.amt < 0).sort((a,b) => a.amt - b.amt);
+        let output = "";
+
+        // Deep copy winners to track remaining credit
+        let winStatus = winners.map(w => ({...w}));
+
+        losers.forEach(l => {
+            let amountToPay = Math.abs(l.amt);
+            winStatus.forEach(w => {
+                if (amountToPay > 0.001 && w.amt > 0.001) {
+                    let payment = Math.min(amountToPay, w.amt);
+                    output += `<div class="payout-line">💸 <b>${l.name}</b> owes <b>${w.name}</b>: $${payment.toFixed(2)}</div>`;
+                    amountToPay -= payment;
+                    w.amt -= payment;
+                }
+            });
+        });
+        document.getElementById('payout-logic').innerHTML = output || "Everyone is even!";
+    }
+
+    function updateUI() {
+        document.getElementById('hole-header').innerText = `Hole ${hole}`;
+        document.getElementById('current-unit-box').innerText = `Current Stake: $${currentUnit.toFixed(2)} / pt`;
+        document.getElementById('defender-name').innerText = `Defender: ${players[defIdx].name}`;
+        
+        const pSelect = document.getElementById('partner-pick');
+        pSelect.innerHTML = "<option disabled selected>Pick Partner...</option>";
+        players.forEach((p, i) => { if(i !== defIdx) { 
+            let opt = document.createElement('option'); opt.value = i; opt.text = p.name; pSelect.add(opt); 
+        }});
+
+        let sorted = [...players].sort((a,b) => a.points - b.points);
+        document.getElementById('last-place-area').innerText = `${sorted[0].name} controls the Bump`;
+
+        const lb = document.getElementById('leaderboard');
+        lb.innerHTML = "<h3>Standings</h3>";
+        players.forEach(p => {
+            let color = p.points >= 0 ? 'darkgreen' : 'darkred';
+            lb.innerHTML += `<div class="player-row">
+                                <span>${p.name}</span>
+                                <b style="color:${color}">${p.points} pts ($${(p.points * baseUnit).toFixed(2)})</b>
+                             </div>`;
+        });
+    }
+
+    function closeSummary() { document.getElementById('summary-screen').style.display = 'none'; }
+    function resetGame() { if(confirm("Start a new match? Current scores will be lost.")) location.reload(); }
 </script>
 </body>
 </html>
