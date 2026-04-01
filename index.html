@@ -16,20 +16,22 @@
         .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--green); color: white; }
         .btn-bump { background: var(--red); color: white; border: 3px solid #ffcdd2; }
+        .btn-bump:disabled { background: #ccc; border-color: #ddd; color: #888; cursor: not-allowed; }
         .btn-summary { background: var(--blue); color: white; margin-top: 15px; }
         .btn-outline { background: transparent; border: 2px solid #999; color: #666; padding: 10px; font-size: 14px; }
         
         .unit-display { background: #fff9c4; padding: 12px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; border: 2px dashed var(--gold); }
         
         .point-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .chip { padding: 15px 5px; border: 2px solid #ddd; border-radius: 10px; font-size: 14px; cursor: pointer; background: #fff; text-align: center; font-weight: 800; color: #666; }
+        .chip { padding: 15px 5px; border: 2px solid #ddd; border-radius: 10px; font-size: 14px; cursor: pointer; background: #fff; text-align: center; font-weight: 800; color: #666; transition: 0.2s; }
         .chip.active { background: var(--green); color: white; border-color: #0e3d14; }
         .chip.ranch-chip.active { background: var(--gold); color: #333; border-color: #f9a825; }
         
         .defender-box { background: var(--light); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--green); }
         .last-place-msg { font-size: 0.9em; color: var(--red); text-align: center; font-weight: 600; margin-bottom: 10px; }
+        .trailing-option { background: #fff3e0; color: #e65100; border: 1px solid #ffb74d; padding: 8px; border-radius: 8px; margin-top: 10px; font-size: 0.85em; text-align: center; font-weight: bold; }
         
-        .summary-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); color: white; z-index: 100; display: none; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .summary-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.94); color: white; z-index: 100; display: none; overflow-y: auto; padding: 20px; box-sizing: border-box; }
         .payout-line { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; margin-bottom: 8px; font-family: monospace; border-left: 4px solid var(--gold); }
     </style>
 </head>
@@ -53,11 +55,12 @@
         <div class="unit-display" id="current-unit-box">Stake: $0.25 / pt</div>
         
         <div id="last-place-area" class="last-place-msg"></div>
-        <button class="btn btn-bump" onclick="applyBump()">BUMP (2x Stakes)</button>
+        <button id="bump-btn" class="btn btn-bump" onclick="applyBump()">BUMP (2x Stakes)</button>
 
         <div class="defender-box">
             <div id="defender-name" style="font-size: 1.2rem; font-weight: 900; margin-bottom: 10px;"></div>
             <select id="partner-pick" class="setup-input" style="margin:0; background:white;"></select>
+            <div id="trailing-defender-msg" class="trailing-option" style="display:none;"></div>
         </div>
 
         <div class="point-toggle">
@@ -99,6 +102,7 @@
     let defIdx = 0;
     let baseUnit = 0.25;
     let currentUnit = 0.25;
+    let bumpedThisHole = false;
     let activePoints = { lb: false, lt: false, px: false, br: false };
 
     function initGame() {
@@ -116,6 +120,7 @@
 
     function togglePoint(type) {
         activePoints[type] = !activePoints[type];
+        // If unchecking a normal point, the ranch must also uncheck
         if (!activePoints.lb || !activePoints.lt || !activePoints.px) {
             activePoints.br = false;
             document.getElementById('chip-br').classList.remove('active');
@@ -124,22 +129,32 @@
     }
 
     function toggleRanch() {
-        if (activePoints.lb && activePoints.lt && activePoints.px) {
-            activePoints.br = !activePoints.br;
-            document.getElementById('chip-br').classList.toggle('active');
-        } else { alert("Must sweep Ball, Total, and Prox for a Ranch!"); }
+        activePoints.br = !activePoints.br;
+        // Automatically check/uncheck others
+        activePoints.lb = activePoints.br;
+        activePoints.lt = activePoints.br;
+        activePoints.px = activePoints.br;
+        
+        ['lb','lt','px','br'].forEach(id => {
+            if(activePoints[id]) document.getElementById('chip-'+id).classList.add('active');
+            else document.getElementById('chip-'+id).classList.remove('active');
+        });
     }
 
     function applyBump() {
-        currentUnit *= 2;
-        updateUI();
+        if(!bumpedThisHole) {
+            currentUnit *= 2;
+            bumpedThisHole = true;
+            document.getElementById('bump-btn').disabled = true;
+            updateUI();
+        }
     }
 
     function processHole() {
         let partnerIdx = parseInt(document.getElementById('partner-pick').value);
         if (isNaN(partnerIdx)) return alert("Select a partner!");
 
-        history.push(JSON.parse(JSON.stringify({ players, hole, defIdx, currentUnit })));
+        history.push(JSON.parse(JSON.stringify({ players, hole, defIdx, currentUnit, bumpedThisHole })));
         document.getElementById('undo-btn').style.display = 'block';
 
         let multiplier = currentUnit / baseUnit;
@@ -166,6 +181,8 @@
 
         hole++;
         defIdx = (defIdx + 1) % 5;
+        bumpedThisHole = false;
+        document.getElementById('bump-btn').disabled = false;
         
         if (hole === 10) { 
             currentUnit = baseUnit; 
@@ -185,14 +202,20 @@
         hole = lastState.hole;
         defIdx = lastState.defIdx;
         currentUnit = lastState.currentUnit;
+        bumpedThisHole = lastState.bumpedThisHole;
+        document.getElementById('bump-btn').disabled = bumpedThisHole;
         if (history.length === 0) document.getElementById('undo-btn').style.display = 'none';
         updateUI();
     }
 
     function showSummary() {
         document.getElementById('summary-screen').style.display = 'block';
-        let statsHtml = `<h2>Score Summary</h2>`;
-        players.forEach(p => {
+        let statsHtml = `<h2>Ranked Standings</h2>`;
+        
+        // Sort players by points descending for the summary
+        let sortedPlayers = [...players].sort((a,b) => b.points - a.points);
+
+        sortedPlayers.forEach(p => {
             let cash = (p.points * baseUnit).toFixed(2);
             let color = p.points >= 0 ? '#81c784' : '#e57373';
             statsHtml += `<div class="player-row" style="color:white; border-bottom:1px solid #444;">
@@ -229,7 +252,20 @@
     function updateUI() {
         document.getElementById('hole-header').innerText = `Hole ${hole}`;
         document.getElementById('current-unit-box').innerText = `Current Stake: $${currentUnit.toFixed(2)} / pt`;
-        document.getElementById('defender-name').innerText = `Defender: ${players[defIdx].name}`;
+        
+        let sorted = [...players].sort((a,b) => a.points - b.points);
+        let trailer = sorted[0];
+
+        // 16, 17, 18 Rule
+        const msgArea = document.getElementById('trailing-defender-msg');
+        if (hole >= 16 && hole <= 18) {
+            msgArea.style.display = 'block';
+            msgArea.innerText = `🚨 ENDGAME OPTION: ${trailer.name} (Trailing) has the choice to Defend or Pass it to ${players[defIdx].name}.`;
+        } else {
+            msgArea.style.display = 'none';
+        }
+
+        document.getElementById('defender-name').innerText = `Scheduled Defender: ${players[defIdx].name}`;
         
         const pSelect = document.getElementById('partner-pick');
         pSelect.innerHTML = "<option disabled selected>Pick Partner...</option>";
@@ -237,16 +273,15 @@
             let opt = document.createElement('option'); opt.value = i; opt.text = p.name; pSelect.add(opt); 
         }});
 
-        let sorted = [...players].sort((a,b) => a.points - b.points);
-        document.getElementById('last-place-area').innerText = `${sorted[0].name} controls the Bump`;
+        document.getElementById('last-place-area').innerText = `${trailer.name} controls the Bump`;
 
         const lb = document.getElementById('leaderboard');
-        lb.innerHTML = "<h3>Standings</h3>";
+        lb.innerHTML = "<h3>Live Points</h3>";
         players.forEach(p => {
             let color = p.points >= 0 ? 'darkgreen' : 'darkred';
             lb.innerHTML += `<div class="player-row">
                                 <span>${p.name}</span>
-                                <b style="color:${color}">${p.points} pts ($${(p.points * baseUnit).toFixed(2)})</b>
+                                <b style="color:${color}">${p.points} pts</b>
                              </div>`;
         });
     }
