@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Defender: High Stakes</title>
+    <style>
+        :root { --green: #1b5e20; --gold: #fbc02d; --red: #b71c1c; --blue: #0d47a1; }
+        body { font-family: system-ui, sans-serif; background: #cfd8dc; margin: 0; padding: 10px; }
+        .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); max-width: 450px; margin: auto; }
+        h2 { text-align: center; color: var(--green); margin: 0 0 10px 0; }
+        .setup-input { width: 100%; padding: 12px; margin: 5px 0 10px 0; border: 1px solid #bbb; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .btn-main { background: var(--green); color: white; margin-top: 10px; }
+        .btn-bump { background: var(--red); color: white; margin: 10px 0; }
+        .unit-display { background: #fff9c4; padding: 8px; text-align: center; font-weight: bold; border-radius: 4px; margin-bottom: 10px; border: 1px solid #fbc02d; }
+        .point-toggle { display: flex; gap: 6px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        .chip { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; cursor: pointer; background: #f5f5f5; flex: 1; text-align: center; font-weight: bold; }
+        .chip.active { background: var(--green); color: white; border-color: var(--green); }
+        .chip.ranch-chip.active { background: var(--gold); color: black; }
+        .last-place-msg { font-size: 0.85em; color: var(--red); text-align: center; font-style: italic; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="setup-screen">
+        <h2>Defender Setup</h2>
+        <label>Starting Stake ($ per point):</label>
+        <input type="number" id="baseUnit" value="0.25" step="0.01" class="setup-input">
+        <input type="text" id="p1" placeholder="Player 1" class="setup-input">
+        <input type="text" id="p2" placeholder="Player 2" class="setup-input">
+        <input type="text" id="p3" placeholder="Player 3" class="setup-input">
+        <input type="text" id="p4" placeholder="Player 4" class="setup-input">
+        <input type="text" id="p5" placeholder="Player 5" class="setup-input">
+        <button class="btn btn-main" onclick="initGame()">Start Round</button>
+    </div>
+
+    <div id="game-screen" style="display:none;">
+        <h2 id="hole-header">Hole 1</h2>
+        <div class="unit-display" id="current-unit-box">Current Stake: $0.25 / point</div>
+        
+        <div id="last-place-area" class="last-place-msg"></div>
+        <button class="btn btn-bump" onclick="applyBump()">BUMP (Double Stakes)</button>
+
+        <div style="background: #f1f8e9; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+            <div id="defender-name" style="text-align:center; font-weight:bold;"></div>
+            <select id="partner-pick" class="setup-input" style="margin-top:5px;"></select>
+        </div>
+
+        <div class="point-toggle">
+            <div class="chip" id="chip-lb" onclick="togglePoint('lb')">LB (2)</div>
+            <div class="chip" id="chip-lt" onclick="togglePoint('lt')">LT (2)</div>
+            <div class="chip" id="chip-px" onclick="togglePoint('px')">PX (1)</div>
+            <div class="chip ranch-chip" id="chip-br" onclick="toggleRanch()">RANCH (12)</div>
+        </div>
+
+        <select id="winner-pick" class="setup-input">
+            <option value="team2">2-Man Team (Def + Partner) Wins</option>
+            <option value="team3">3-Man Team (The Field) Wins</option>
+        </select>
+
+        <button class="btn btn-main" onclick="processHole()">Post Score</button>
+
+        <hr style="margin:20px 0;">
+        <div id="leaderboard"></div>
+    </div>
+</div>
+
+<script>
+    let players = [];
+    let hole = 1;
+    let defIdx = 0;
+    let baseUnit = 0.25;
+    let currentUnit = 0.25;
+    let activePoints = { lb: false, lt: false, px: false, br: false };
+
+    function initGame() {
+        baseUnit = parseFloat(document.getElementById('baseUnit').value);
+        currentUnit = baseUnit;
+        for(let i=1; i<=5; i++) {
+            players.push({ name: document.getElementById('p'+i).value || "P"+i, points: 0 });
+        }
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        updateUI();
+    }
+
+    function applyBump() {
+        currentUnit *= 2;
+        updateUI();
+        alert("BUMPED! Stakes are now $" + currentUnit.toFixed(2));
+    }
+
+    function togglePoint(type) {
+        activePoints[type] = !activePoints[type];
+        if (!activePoints.lb || !activePoints.lt || !activePoints.px) {
+            activePoints.br = false;
+            document.getElementById('chip-br').classList.remove('active');
+        }
+        document.getElementById('chip-' + type).classList.toggle('active');
+    }
+
+    function toggleRanch() {
+        if (activePoints.lb && activePoints.lt && activePoints.px) {
+            activePoints.br = !activePoints.br;
+            document.getElementById('chip-br').classList.toggle('active');
+        } else {
+            alert("Sweep LB, LT, and PX first!");
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('hole-header').innerText = `Hole ${hole}`;
+        document.getElementById('current-unit-box').innerText = `Current Stake: $${currentUnit.toFixed(2)} / point`;
+        document.getElementById('defender-name').innerText = `Defender: ${players[defIdx].name}`;
+        
+        // Update Partner list
+        const pSelect = document.getElementById('partner-pick');
+        pSelect.innerHTML = "<option disabled selected>Pick Partner...</option>";
+        players.forEach((p, i) => { if(i !== defIdx) { 
+            let opt = document.createElement('option'); opt.value = i; opt.text = p.name; pSelect.add(opt); 
+        }});
+
+        // Find Last Place
+        let sorted = [...players].sort((a,b) => a.points - b.points);
+        document.getElementById('last-place-area').innerText = `${sorted[0].name} is in last (Controls Bump)`;
+
+        // Leaderboard
+        const lb = document.getElementById('leaderboard');
+        lb.innerHTML = "<h3>Standings</h3>";
+        players.forEach(p => {
+            lb.innerHTML += `
+                <div class="player-row">
+                    <span>${p.name}</span>
+                    <span style="text-align:right">
+                        <b>${p.points} pts</b><br>
+                        <small>$${(p.points * baseUnit).toFixed(2)}</small>
+                    </span>
+                </div>`;
+        });
+    }
+
+    function processHole() {
+        let partnerIdx = parseInt(document.getElementById('partner-pick').value);
+        if (isNaN(partnerIdx)) return alert("Pick a partner!");
+
+        // Calculation: Points * (CurrentUnit / BaseUnit) to keep point history accurate relative to money
+        let multiplier = currentUnit / baseUnit;
+        let hPts = activePoints.br ? 12 : (activePoints.lb?2:0) + (activePoints.lt?2:0) + (activePoints.px?1:0);
+        let effectivePts = hPts * multiplier;
+
+        let totalPot = effectivePts * 3;
+        let pShare = Math.floor(totalPot / 2);
+        let dShare = totalPot - pShare;
+
+        let winner = document.getElementById('winner-pick').value;
+
+        players.forEach((p, i) => {
+            if (winner === 'team2') {
+                if(i === defIdx) p.points += dShare;
+                else if(i === partnerIdx) p.points += pShare;
+                else p.points -= effectivePts;
+            } else {
+                if(i === defIdx) p.points -= dShare;
+                else if(i === partnerIdx) p.points -= pShare;
+                else p.points += effectivePts;
+            }
+        });
+
+        hole++;
+        defIdx = (defIdx + 1) % 5;
+        
+        // Reset Stakes at the turn
+        if (hole === 10) {
+            currentUnit = baseUnit;
+            alert("The Turn! Stakes reset to $" + baseUnit.toFixed(2));
+        }
+
+        activePoints = { lb: false, lt: false, px: false, br: false };
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        updateUI();
+        window.scrollTo(0,0);
+    }
+</script>
+</body>
+</html>
