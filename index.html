@@ -63,7 +63,7 @@
         <div class="point-toggle">
             <div class="chip" id="chip-lb" onclick="togglePoint('lb')">LOW BALL (2)</div>
             <div class="chip" id="chip-lt" onclick="togglePoint('lt')">LOW TOTAL (2)</div>
-            <div class="chip" id="chip-px" onclick="togglePoint('px')">PAR/BIRDIE (1)</div>
+            <div class="chip" id="chip-px" onclick="togglePoint('px')">PROX (1)</div>
             <div class="chip ranch-chip" id="chip-br" onclick="toggleRanch()">THE RANCH (12)</div>
         </div>
 
@@ -127,7 +127,7 @@
         if (activePoints.lb && activePoints.lt && activePoints.px) {
             activePoints.br = !activePoints.br;
             document.getElementById('chip-br').classList.toggle('active');
-        } else { alert("Must sweep Ball, Total, and Par/Birdie for a Ranch!"); }
+        } else { alert("Must sweep Ball, Total, and Prox for a Ranch!"); }
     }
 
     function applyBump() {
@@ -167,7 +167,6 @@
         hole++;
         defIdx = (defIdx + 1) % 5;
         
-        // At the turn, just alert and reset unit. Don't force a screen change.
         if (hole === 10) { 
             currentUnit = baseUnit; 
             alert("The Turn! Stakes reset to $" + baseUnit.toFixed(2));
@@ -211,7 +210,6 @@
         let losers = balances.filter(b => b.amt < 0).sort((a,b) => a.amt - b.amt);
         let output = "";
 
-        // Deep copy winners to track remaining credit
         let winStatus = winners.map(w => ({...w}));
 
         losers.forEach(l => {
