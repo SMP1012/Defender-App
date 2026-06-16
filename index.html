@@ -7,12 +7,27 @@
     <style>
         :root { --green: #1b5e20; --gold: #fbc02d; --red: #b71c1c; --blue: #0d47a1; --light: #f1f8e9; }
         body { font-family: system-ui, -apple-system, sans-serif; background: #cfd8dc; margin: 0; padding: 10px; touch-action: manipulation; }
+        
+        /* Splash Screen styling */
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a237e; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; transition: opacity 0.5s ease-out; text-align: center; }
+        .logo-container { font-size: 64px; margin-bottom: 20px; animation: pulse 2s infinite ease-in-out; }
+        .splash-title { font-size: 28px; font-weight: 800; letter-spacing: 1px; color: #fff; margin: 0; text-transform: uppercase; }
+        .splash-subtitle { font-size: 14px; color: #b0bec5; margin-top: 5px; font-weight: 400; }
+        .copyright { position: absolute; bottom: 20px; font-size: 11px; color: #90a4ae; letter-spacing: 0.5px; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.9; }
+        }
+
         .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-width: 480px; margin: auto; }
         h2 { text-align: center; color: var(--green); margin: 0 0 5px 0; }
         .setup-input { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
         .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
         .btn-main { background: var(--green); color: white; }
         .btn-bump { background: var(--red); color: white; border: 3px solid #ffcdd2; }
+        .btn-bump:disabled { background: #b0bec5 !important; border-color: #cfd8dc !important; color: #78909c !important; cursor: not-allowed; }
         .btn-summary { background: var(--blue); color: white; }
         .btn-noblood { background: #607d8b; color: white; margin-bottom: 10px; }
         .unit-display { background: #fff9c4; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; border: 2px dashed var(--gold); }
@@ -33,6 +48,14 @@
     </style>
 </head>
 <body>
+
+<!-- Animated Splash Screen -->
+<div id="splash-screen">
+    <div class="logo-container">🛡️</div>
+    <div class="splash-title">Patton Software</div>
+    <div class="splash-subtitle">Solutions</div>
+    <div class="copyright">COPYRIGHT &copy; 2026</div>
+</div>
 
 <div class="card">
     <div id="setup-screen">
@@ -73,6 +96,7 @@
                 <div class="chip" id="d-lb" onclick="toggleNet('d','lb')">Low Ball (2)</div>
                 <div class="chip" id="d-lt" onclick="toggleNet('d','lt')">Low Total (2)</div>
                 <div class="chip" id="d-px" onclick="toggleNet('d','px')">Prox (1)</div>
+                <div class="chip" id="d-bd" onclick="toggleBirdie('d')">Birdie (1)</div>
                 <div class="chip ranch-chip" id="d-br" onclick="toggleNetRanch('d')">RANCH (12)</div>
             </div>
             <div>
@@ -80,6 +104,7 @@
                 <div class="chip" id="f-lb" onclick="toggleNet('f','lb')">Low Ball (2)</div>
                 <div class="chip" id="f-lt" onclick="toggleNet('f','lt')">Low Total (2)</div>
                 <div class="chip" id="f-px" onclick="toggleNet('f','px')">Prox (1)</div>
+                <div class="chip" id="f-bd" onclick="toggleBirdie('f')">Birdie (1)</div>
                 <div class="chip ranch-chip" id="f-br" onclick="toggleNetRanch('f')">RANCH (12)</div>
             </div>
         </div>
@@ -106,8 +131,17 @@
 <script>
     let players = [], history = [], hole = 1, defIdx = 0, baseUnit = 0.25, currentUnit = 0.25;
     let bumpsOut = 0, bumpedThisHole = false, activeDefIdx = 0;
-    let endgamePassCount = 0;
-    let scores = { d: {lb:0, lt:0, px:0, br:0}, f: {lb:0, lt:0, px:0, br:0} };
+    let endgamePassCount = 0, endgameDecisionMade = false;
+    let scores = { d: {lb:0, lt:0, px:0, bd:0, br:0}, f: {lb:0, lt:0, px:0, bd:0, br:0} };
+
+    // Splash Screen Timer
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            setTimeout(() => splash.style.display = 'none', 500);
+        }, 2500);
+    });
 
     function initGame() {
         baseUnit = parseFloat(document.getElementById('baseUnit').value) || 0.25;
@@ -136,17 +170,31 @@
         renderChips();
     }
 
+    function toggleBirdie(team) {
+        scores[team].bd = scores[team].bd ? 0 : 1;
+        renderChips();
+    }
+
     function toggleNetRanch(team) {
         let state = scores[team].br ? 0 : 12;
-        scores.d = { lb:0, lt:0, px:0, br:0 };
-        scores.f = { lb:0, lt:0, px:0, br:0 };
-        if(state) scores[team] = { lb:2, lt:2, px:1, br:12 };
+        let currentBirdieD = scores.d.bd;
+        let currentBirdieF = scores.f.bd;
+        
+        scores.d = { lb:0, lt:0, px:0, bd:currentBirdieD, br:0 };
+        scores.f = { lb:0, lt:0, px:0, bd:currentBirdieF, br:0 };
+        
+        if(state) {
+            scores[team].lb = 2;
+            scores[team].lt = 2;
+            scores[team].px = 1;
+            scores[team].br = 12;
+        }
         renderChips();
     }
 
     function renderChips() {
         ['d','f'].forEach(t => {
-            ['lb','lt','px','br'].forEach(p => {
+            ['lb','lt','px','bd','br'].forEach(p => {
                 let el = document.getElementById(`${t}-${p}`);
                 if(scores[t][p]) el.classList.add('active');
                 else el.classList.remove('active');
@@ -155,6 +203,7 @@
     }
 
     function applyBump() {
+        if(bumpedThisHole) return;
         currentUnit *= 2; bumpedThisHole = true; bumpsOut++;
         updateUI();
     }
@@ -166,6 +215,7 @@
     function acceptDefender() {
         let seq = getEndgameSequence();
         activeDefIdx = seq[endgamePassCount].i;
+        endgameDecisionMade = true;
         updateUI();
     }
 
@@ -173,12 +223,13 @@
         endgamePassCount++;
         if(endgamePassCount >= 5) {
             activeDefIdx = defIdx; 
+            endgameDecisionMade = true;
         }
         updateUI();
     }
 
     function noBlood(advance) {
-        scores = { d: {lb:0, lt:0, px:0, br:0}, f: {lb:0, lt:0, px:0, br:0} };
+        scores = { d: {lb:0, lt:0, px:0, bd:0, br:0}, f: {lb:0, lt:0, px:0, bd:0, br:0} };
         renderChips();
         if(advance) processHole(true);
     }
@@ -187,11 +238,15 @@
         let partnerIdx = parseInt(document.getElementById('partner-pick').value);
         if (!isPush && isNaN(partnerIdx)) return alert("Select partner!");
 
-        history.push(JSON.parse(JSON.stringify({ players, hole, defIdx, currentUnit, bumpedThisHole, bumpsOut, activeDefIdx, endgamePassCount })));
+        history.push(JSON.parse(JSON.stringify({ players, hole, defIdx, currentUnit, bumpedThisHole, bumpsOut, activeDefIdx, endgamePassCount, endgameDecisionMade })));
         
         if(!isPush) {
             let dTotal = scores.d.br || (scores.d.lb + scores.d.lt + scores.d.px);
+            dTotal += scores.d.bd;
+            
             let fTotal = scores.f.br || (scores.f.lb + scores.f.lt + scores.f.px);
+            fTotal += scores.f.bd;
+            
             let netPerFieldPlayer = (dTotal - fTotal) * (currentUnit / baseUnit);
             let totalPot = netPerFieldPlayer * 3;
 
@@ -210,9 +265,10 @@
         defIdx = (defIdx + 1) % 5;
         activeDefIdx = defIdx; 
         endgamePassCount = 0;
+        endgameDecisionMade = false;
         bumpedThisHole = false;
         noBlood(false); 
-        if(hole === 10) { currentUnit = baseUnit; bumpsOut = 0; alert("Turn: Stakes & Bumps Reset!"); }
+        if(hole === 10) { currentUnit = baseUnit; bumpsOut = 0; alert("The Turn: Stakes & Bumps Reset!"); }
         updateUI();
     }
 
@@ -222,6 +278,7 @@
         currentUnit = last.currentUnit; bumpedThisHole = last.bumpedThisHole;
         bumpsOut = last.bumpsOut; activeDefIdx = last.activeDefIdx;
         endgamePassCount = last.endgamePassCount;
+        endgameDecisionMade = last.endgameDecisionMade;
         updateUI();
     }
 
@@ -233,18 +290,45 @@
         let sorted = [...players].map((p,i)=>({p,i})).sort((a,b)=>a.p.points - b.p.points);
         let minPoints = sorted[0].p.points;
         let controlsBump = sorted.filter(x => x.p.points === minPoints).map(x => x.p.name);
-
+        
+        let bumpBtn = document.getElementById('bump-btn');
+        let bumpInfo = document.getElementById('bump-info');
         const choiceBox = document.getElementById('endgame-choice');
-        if(hole >= 16 && hole <= 18 && endgamePassCount < 5 && history.length < hole) {
-            let seq = getEndgameSequence();
-            let currentOption = seq[endgamePassCount];
-            choiceBox.style.display = 'block';
-            document.getElementById('choice-text').innerHTML = `<b>${currentOption.p.name}</b>: Defend or Pass?`;
-            
-            document.getElementById('bump-info').innerText = `Bump control: ${currentOption.p.name}`;
+
+        // Enforce max 1 bump restriction per hole across all systems
+        if (bumpedThisHole) {
+            bumpBtn.disabled = true;
+            bumpBtn.innerText = "BUMPED THIS HOLE";
+        } else {
+            bumpBtn.disabled = false;
+            bumpBtn.innerText = "BUMP (2x Stakes)";
+        }
+
+        if(hole >= 16 && hole <= 18) {
+            if(!endgameDecisionMade) {
+                let seq = getEndgameSequence();
+                let currentOption = seq[endgamePassCount];
+                choiceBox.style.display = 'block';
+                document.getElementById('choice-text').innerHTML = `<b>${currentOption.p.name}</b>: Defend or Pass?`;
+                
+                // If the player up to choose is the actual low scorer, they have opportunity to bump
+                if (currentOption.p.points === minPoints) {
+                    bumpInfo.innerText = `Bump control: ${currentOption.p.name}`;
+                    if(!bumpedThisHole) bumpBtn.disabled = false;
+                } else {
+                    // If the low scorer passed, bump control is permanently disabled/grayed out for the hole
+                    bumpInfo.innerText = "Bump Option: Closed (Lowest score passed)";
+                    bumpBtn.disabled = true;
+                }
+            } else {
+                choiceBox.style.display = 'none';
+                // If defender was locked in but low point scorer didn't pull trigger, bump option is gone
+                bumpInfo.innerText = "Bump Option: Closed";
+                bumpBtn.disabled = true;
+            }
         } else {
             choiceBox.style.display = 'none';
-            document.getElementById('bump-info').innerText = `Bump control: ${controlsBump.join(', ')}`;
+            bumpInfo.innerText = `Bump control: ${controlsBump.join(', ')}`;
         }
 
         document.getElementById('def-display-name').innerText = `Defender: ${players[activeDefIdx].name}`;
