@@ -85,7 +85,7 @@
                 <div id="choice-text"></div>
                 <div class="choice-btns">
                     <button class="btn-choice" style="background:var(--green); color:white;" onclick="acceptDefender()">Defend</button>
-                    <button class="btn-choice" style="background:#ddd;" onclick="passDefender()">Pass</button>
+                    <button id="pass-btn" class="btn-choice" style="background:#ddd;" onclick="passDefender()">Pass</button>
                 </div>
             </div>
         </div>
@@ -171,23 +171,21 @@
     }
 
     function toggleBirdie(team) {
+        if(scores[team].br) return; // Locked if ranch is active
         scores[team].bd = scores[team].bd ? 0 : 1;
         renderChips();
     }
 
     function toggleNetRanch(team) {
         let state = scores[team].br ? 0 : 12;
-        let currentBirdieD = scores.d.bd;
-        let currentBirdieF = scores.f.bd;
         
-        scores.d = { lb:0, lt:0, px:0, bd:currentBirdieD, br:0 };
-        scores.f = { lb:0, lt:0, px:0, bd:currentBirdieF, br:0 };
+        // Reset everything
+        scores.d = { lb:0, lt:0, px:0, bd:0, br:0 };
+        scores.f = { lb:0, lt:0, px:0, bd:0, br:0 };
         
         if(state) {
-            scores[team].lb = 2;
-            scores[team].lt = 2;
-            scores[team].px = 1;
-            scores[team].br = 12;
+            // When ranch is selected, all chips (including birdie) turn green/active
+            scores[team] = { lb:2, lt:2, px:1, bd:1, br:12 };
         }
         renderChips();
     }
@@ -241,11 +239,9 @@
         history.push(JSON.parse(JSON.stringify({ players, hole, defIdx, currentUnit, bumpedThisHole, bumpsOut, activeDefIdx, endgamePassCount, endgameDecisionMade })));
         
         if(!isPush) {
-            let dTotal = scores.d.br || (scores.d.lb + scores.d.lt + scores.d.px);
-            dTotal += scores.d.bd;
-            
-            let fTotal = scores.f.br || (scores.f.lb + scores.f.lt + scores.f.px);
-            fTotal += scores.f.bd;
+            // Total points calculated from base points. Ranch overwrites to 12. Birdie is standalone if ranch isn't on.
+            let dTotal = scores.d.br ? 12 : (scores.d.lb + scores.d.lt + scores.d.px + scores.d.bd);
+            let fTotal = scores.f.br ? 12 : (scores.f.lb + scores.f.lt + scores.f.px + scores.f.bd);
             
             let netPerFieldPlayer = (dTotal - fTotal) * (currentUnit / baseUnit);
             let totalPot = netPerFieldPlayer * 3;
@@ -294,6 +290,7 @@
         let bumpBtn = document.getElementById('bump-btn');
         let bumpInfo = document.getElementById('bump-info');
         const choiceBox = document.getElementById('endgame-choice');
+        const passBtn = document.getElementById('pass-btn');
 
         // Enforce max 1 bump restriction per hole across all systems
         if (bumpedThisHole) {
@@ -311,23 +308,30 @@
                 choiceBox.style.display = 'block';
                 document.getElementById('choice-text').innerHTML = `<b>${currentOption.p.name}</b>: Defend or Pass?`;
                 
-                // If the player up to choose is the actual low scorer, they have opportunity to bump
+                // Hide Pass button if it reaches the leader (index 4 in sorted array)
+                if (endgamePassCount === 4) {
+                    passBtn.style.display = 'none';
+                } else {
+                    passBtn.style.display = 'block';
+                }
+                
+                // CRITICAL REVISION: Bump option ONLY open if the current choice holds the minimum points.
                 if (currentOption.p.points === minPoints) {
                     bumpInfo.innerText = `Bump control: ${currentOption.p.name}`;
                     if(!bumpedThisHole) bumpBtn.disabled = false;
                 } else {
-                    // If the low scorer passed, bump control is permanently disabled/grayed out for the hole
+                    // Lowest point score passed. Bump option is completely gone/disabled for the rest of the line.
                     bumpInfo.innerText = "Bump Option: Closed (Lowest score passed)";
                     bumpBtn.disabled = true;
                 }
             } else {
                 choiceBox.style.display = 'none';
-                // If defender was locked in but low point scorer didn't pull trigger, bump option is gone
                 bumpInfo.innerText = "Bump Option: Closed";
                 bumpBtn.disabled = true;
             }
         } else {
             choiceBox.style.display = 'none';
+            passBtn.style.display = 'block';
             bumpInfo.innerText = `Bump control: ${controlsBump.join(', ')}`;
         }
 
